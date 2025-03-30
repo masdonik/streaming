@@ -4,6 +4,7 @@ const path = require('path');
 const si = require('systeminformation');
 const schedule = require('node-schedule');
 const fs = require('fs');
+const downloadService = require('./services/downloadService');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -92,14 +93,38 @@ app.post('/api/stop-stream', (req, res) => {
 });
 
 // Video Management
-app.post('/api/download-video', (req, res) => {
-    const { url } = req.body;
+app.post('/api/download-video', async (req, res) => {
+    const { url, filename } = req.body;
     
+    if (!url) {
+        return res.status(400).json({ 
+            success: false,
+            error: 'URL video tidak boleh kosong' 
+        });
+    }
+
     try {
-        // TODO: Implementasi download dari Google Drive
-        res.json({ message: 'Video mulai didownload' });
+        // Generate nama file default jika tidak ada
+        const defaultFilename = filename || `video_${Date.now()}.mp4`;
+        
+        // Mulai proses download
+        const result = await downloadService.downloadVideo(url, defaultFilename);
+        
+        res.json({
+            success: true,
+            message: result.message,
+            data: {
+                filename: defaultFilename,
+                path: result.path,
+                size: result.size
+            }
+        });
     } catch (error) {
-        res.status(500).json({ error: 'Gagal mendownload video' });
+        console.error('Error download:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Gagal mendownload video'
+        });
     }
 });
 

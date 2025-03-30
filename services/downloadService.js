@@ -36,9 +36,27 @@ class DownloadService {
             const fileId = this.extractFileId(url);
             const downloadId = `download_${Date.now()}`;
             
-            // Gunakan gdown untuk download dari Google Drive
-            // gdown harus diinstall: pip install gdown
+            // Validasi filename
+            if (!filename) {
+                filename = `video_${Date.now()}.mp4`;
+            }
+
+            // Pastikan filename aman
+            filename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+            
             const outputPath = path.join(this.downloadPath, filename);
+            
+            // Cek apakah gdown terinstall
+            try {
+                await new Promise((resolve, reject) => {
+                    const checkGdown = spawn('gdown', ['--version']);
+                    checkGdown.on('error', () => reject(new Error('gdown tidak terinstall. Silakan install dengan: pip install gdown')));
+                    checkGdown.on('close', (code) => code === 0 ? resolve() : reject(new Error('gdown tidak terinstall')));
+                });
+            } catch (error) {
+                throw new Error(`Kesalahan sistem: ${error.message}`);
+            }
+
             const gdownProcess = spawn('gdown', [
                 `https://drive.google.com/uc?id=${fileId}`,
                 '-O', outputPath
@@ -46,20 +64,45 @@ class DownloadService {
 
             return new Promise((resolve, reject) => {
                 let error = '';
+                let progress = '';
+
+                gdownProcess.stdout.on('data', (data) => {
+                    progress = data.toString();
+                    console.log(`Progress: ${progress}`);
+                });
 
                 gdownProcess.stderr.on('data', (data) => {
                     error += data.toString();
+                    console.error(`Download error: ${data}`);
+                });
+
+                gdownProcess.on('error', (err) => {
+                    console.error(`Process error: ${err.message}`);
+                    this.activeDownloads.delete(downloadId);
+                    reject(new Error(`Kesalahan proses download: ${err.message}`));
                 });
 
                 gdownProcess.on('close', (code) => {
-                    if (code === 0) {
-                        resolve({
-                            success: true,
-                            path: outputPath,
-                            message: 'Download berhasil'
-                        });
+                    this.activeDownloads.delete(downloadId);
+                    
+                    if (code === 0 && fs.existsSync(outputPath)) {
+                        const stats = fs.statSync(outputPath);
+                        if (stats.size > 0) {
+                            resolve({
+                                success: true,
+                                path: outputPath,
+                                message: 'Download berhasil',
+                                size: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
+                            });
+                        } else {
+                            fs.unlinkSync(outputPath); // Hapus file kosong
+                            reject(new Error('Download gagal: File hasil download kosong'));
+                        }
                     } else {
-                        reject(new Error(`Download gagal: ${error}`));
+                        if (fs.existsSync(outputPath)) {
+                            fs.unlinkSync(outputPath); // Hapus file yang gagal
+                        }
+                        reject(new Error(`Download gagal: ${error || 'Terjadi kesalahan yang tidak diketahui'}`));
                     }
                 });
 
@@ -69,7 +112,8 @@ class DownloadService {
                     info: {
                         url,
                         filename,
-                        startTime: new Date()
+                        startTime: new Date(),
+                        status: 'downloading'
                     }
                 });
             });

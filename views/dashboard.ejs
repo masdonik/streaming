@@ -139,17 +139,46 @@
 
         <!-- Download Tab Content -->
         <div id="download" class="tab-content hidden">
+            <!-- Notification Area -->
+            <div id="notificationArea" class="mb-8 hidden notification-enter">
+                <div id="successNotif" class="bg-green-600 text-white p-4 rounded-lg mb-4 hidden hover-card">
+                    <div class="flex items-center">
+                        <i class="fas fa-check-circle mr-2 text-xl"></i>
+                        <span id="successMessage" class="font-medium"></span>
+                    </div>
+                </div>
+                <div id="errorNotif" class="bg-red-600 text-white p-4 rounded-lg mb-4 hidden hover-card">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2 text-xl"></i>
+                        <span id="errorMessage" class="font-medium"></span>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 class="text-xl font-semibold mb-4">Download Video</h2>
-                <form id="downloadForm" class="space-y-4">
+                <h2 class="text-xl font-semibold mb-4">Download Video dari Google Drive</h2>
+                <form id="downloadForm" class="download-form">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-2">Google Drive URL</label>
                         <input type="text" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2" 
-                               placeholder="Masukkan URL Google Drive">
+                               placeholder="Contoh: https://drive.google.com/file/d/YOUR_FILE_ID/view" required>
+                        <p class="download-help-text">Format yang didukung: /file/d/ID, ?id=ID, atau /d/ID</p>
                     </div>
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg">
-                        <i class="fas fa-download mr-2"></i>Download Video
-                    </button>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Nama File (Opsional)</label>
+                        <input type="text" name="filename" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2" 
+                               placeholder="Biarkan kosong untuk nama otomatis">
+                        <p class="download-help-text">Ekstensi file akan ditambahkan secara otomatis (.mp4)</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button type="submit" id="downloadButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg flex items-center">
+                            <i class="fas fa-download mr-2"></i>Download Video
+                        </button>
+                        <div id="downloadProgress" class="hidden download-progress">
+                            <div class="download-progress-spinner rounded-full h-6 w-6 border-b-2 border-green-500 mr-3"></div>
+                            <span>Sedang mendownload...</span>
+                        </div>
+                    </div>
                 </form>
             </div>
 
@@ -237,10 +266,46 @@
             }
         });
 
+        // Fungsi untuk menampilkan notifikasi
+        function showNotification(type, message) {
+            const notifArea = document.getElementById('notificationArea');
+            const successNotif = document.getElementById('successNotif');
+            const errorNotif = document.getElementById('errorNotif');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+
+            notifArea.classList.remove('hidden');
+            
+            if (type === 'success') {
+                successNotif.classList.remove('hidden');
+                errorNotif.classList.add('hidden');
+                successMessage.textContent = message;
+            } else {
+                errorNotif.classList.remove('hidden');
+                successNotif.classList.add('hidden');
+                errorMessage.textContent = message;
+            }
+
+            // Sembunyikan notifikasi setelah 5 detik
+            setTimeout(() => {
+                notifArea.classList.add('hidden');
+                successNotif.classList.add('hidden');
+                errorNotif.classList.add('hidden');
+            }, 5000);
+        }
+
         document.getElementById('downloadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
+            const downloadButton = document.getElementById('downloadButton');
+            const downloadProgress = document.getElementById('downloadProgress');
+
             try {
+                // Tampilkan loading state
+                downloadButton.classList.add('hidden');
+                downloadProgress.classList.remove('hidden');
+                downloadProgress.classList.add('flex');
+
                 const response = await fetch('/api/download-video', {
                     method: 'POST',
                     headers: {
@@ -248,10 +313,25 @@
                     },
                     body: JSON.stringify(Object.fromEntries(formData)),
                 });
+                
                 const result = await response.json();
-                alert(result.message);
+                
+                if (result.success) {
+                    showNotification('success', `${result.message} (${result.data.size})`);
+                    // Reset form
+                    e.target.reset();
+                    // Refresh halaman setelah 1 detik untuk memperbarui daftar video
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showNotification('error', result.error || 'Gagal mendownload video');
+                }
             } catch (error) {
-                alert('Error downloading video');
+                showNotification('error', 'Terjadi kesalahan saat mendownload video');
+            } finally {
+                // Kembalikan tombol ke keadaan semula
+                downloadButton.classList.remove('hidden');
+                downloadProgress.classList.add('hidden');
+                downloadProgress.classList.remove('flex');
             }
         });
 
