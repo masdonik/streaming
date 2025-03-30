@@ -14,6 +14,14 @@ class DownloadService {
     }
 
     extractFileId(url) {
+        if (!url) {
+            throw new Error('URL tidak boleh kosong');
+        }
+
+        if (!url.includes('drive.google.com')) {
+            throw new Error('URL harus dari Google Drive');
+        }
+
         // Support berbagai format URL Google Drive
         const patterns = [
             /\/file\/d\/([a-zA-Z0-9_-]+)/,           // Format: /file/d/{fileId}
@@ -28,7 +36,7 @@ class DownloadService {
             }
         }
 
-        throw new Error('Format URL Google Drive tidak valid');
+        throw new Error('Format URL Google Drive tidak valid. Gunakan format: https://drive.google.com/file/d/YOUR_FILE_ID/view');
     }
 
     async downloadVideo(url, filename) {
@@ -46,6 +54,11 @@ class DownloadService {
             
             const outputPath = path.join(this.downloadPath, filename);
             
+            // Validate URL before proceeding
+            if (!url.startsWith('https://')) {
+                throw new Error('URL harus menggunakan protokol HTTPS');
+            }
+
             // Cek apakah gdown terinstall
             try {
                 await new Promise((resolve, reject) => {
@@ -54,6 +67,7 @@ class DownloadService {
                     checkGdown.on('close', (code) => code === 0 ? resolve() : reject(new Error('gdown tidak terinstall')));
                 });
             } catch (error) {
+                console.error('Gdown check error:', error);
                 throw new Error(`Kesalahan sistem: ${error.message}`);
             }
 
@@ -82,6 +96,16 @@ class DownloadService {
                     reject(new Error(`Kesalahan proses download: ${err.message}`));
                 });
 
+                gdownProcess.stderr.on('data', (data) => {
+                    const errorMsg = data.toString();
+                    error += errorMsg;
+                    if (errorMsg.includes('Cannot retrieve the public link of the file')) {
+                        gdownProcess.kill();
+                        reject(new Error('File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'));
+                    }
+                    console.error(`Download error: ${errorMsg}`);
+                });
+
                 gdownProcess.on('close', (code) => {
                     this.activeDownloads.delete(downloadId);
                     
@@ -102,7 +126,10 @@ class DownloadService {
                         if (fs.existsSync(outputPath)) {
                             fs.unlinkSync(outputPath); // Hapus file yang gagal
                         }
-                        reject(new Error(`Download gagal: ${error || 'Terjadi kesalahan yang tidak diketahui'}`));
+                        const errorMsg = error.includes('Cannot retrieve the public link') 
+                            ? 'File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'
+                            : error || 'Terjadi kesalahan yang tidak diketahui';
+                        reject(new Error(`Download gagal: ${errorMsg}`));
                     }
                 });
 

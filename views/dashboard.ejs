@@ -30,7 +30,7 @@
                         <i class="fas fa-microchip text-blue-400 text-xl mr-3"></i>
                         <div>
                             <p class="text-sm text-gray-400">CPU Usage</p>
-                            <p class="text-lg font-semibold"><%= stats.cpuUsage %>%</p>
+                            <p class="text-lg font-semibold" data-stat="cpu"><%= stats.cpuUsage %>%</p>
                         </div>
                     </div>
                 </div>
@@ -39,7 +39,7 @@
                         <i class="fas fa-memory text-green-400 text-xl mr-3"></i>
                         <div>
                             <p class="text-sm text-gray-400">Memory Usage</p>
-                            <p class="text-lg font-semibold"><%= stats.memoryUsage %>%</p>
+                            <p class="text-lg font-semibold" data-stat="memory"><%= stats.memoryUsage %>%</p>
                         </div>
                     </div>
                 </div>
@@ -48,7 +48,7 @@
                         <i class="fas fa-hdd text-purple-400 text-xl mr-3"></i>
                         <div>
                             <p class="text-sm text-gray-400">Disk Usage</p>
-                            <p class="text-lg font-semibold"><%= stats.diskUsage %>%</p>
+                            <p class="text-lg font-semibold" data-stat="disk"><%= stats.diskUsage %>%</p>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
         </div>
 
         <!-- Streaming Tab Content -->
-        <div id="streaming" class="tab-content">
+        <div id="streaming" class="tab-content block">
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
                 <h2 class="text-xl font-semibold mb-4">Start New Stream</h2>
                 <form id="streamForm" class="space-y-4">

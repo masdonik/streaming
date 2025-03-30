@@ -29,7 +29,9 @@ function formatFileSize(bytes) {
 // Update system stats
 async function updateSystemStats() {
     try {
+        console.log('Fetching system stats...');
         const response = await fetch('/api/system-stats');
+        console.log('System stats response:', response);
         const stats = await response.json();
         
         document.querySelector('[data-stat="cpu"]').textContent = `${stats.cpuUsage}%`;
@@ -89,6 +91,9 @@ async function handleDownloadForm(event) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<div class="loading"></div>';
 
+        const urlInput = form.querySelector('input[name="url"]');
+        urlInput.value = urlInput.value.trim();
+        
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
@@ -109,7 +114,16 @@ async function handleDownloadForm(event) {
             throw new Error(result.error || 'Failed to download video');
         }
     } catch (error) {
-        showNotification(error.message, 'error');
+        let errorMessage;
+        if (error.response) {
+            const errorData = await error.response.json();
+            errorMessage = errorData.error;
+        } else if (error instanceof Error) {
+            errorMessage = error.message;
+        } else {
+            errorMessage = 'Terjadi kesalahan saat mendownload video';
+        }
+        showNotification(errorMessage, 'error');
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalText;
@@ -172,11 +186,19 @@ async function handleDeleteVideo(filename) {
 // Fungsi untuk update tabel active streams
 async function updateActiveStreams() {
     try {
-        const response = await fetch('/api/active-streams');
-        const streams = await response.json();
+        // Since the endpoint is not implemented yet, return empty array
+        const streams = [];
         
         const tableBody = document.getElementById('activeStreamsTable');
-        tableBody.innerHTML = streams.map(stream => `
+        if (!tableBody) return;
+        
+        tableBody.innerHTML = streams.length === 0 ? `
+            <tr class="table-row">
+                <td colspan="4" class="py-3 px-4 text-center text-gray-500">
+                    No active streams
+                </td>
+            </tr>
+        ` : streams.map(stream => `
             <tr class="table-row">
                 <td class="py-3 px-4">${stream.videoPath.split('/').pop()}</td>
                 <td class="py-3 px-4">
@@ -234,7 +256,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Form handlers
     document.getElementById('streamForm')?.addEventListener('submit', handleStreamForm);
-    document.getElementById('downloadForm')?.addEventListener('submit', handleDownloadForm);
+    
+    // Download form handler with input clearing
+    const downloadForm = document.getElementById('downloadForm');
+    if (downloadForm) {
+        // Clear input when switching to download tab
+        document.querySelector('[data-tab="download"]')?.addEventListener('click', () => {
+            const urlInput = downloadForm.querySelector('input[name="url"]');
+            if (urlInput) urlInput.value = '';
+        });
+        
+        downloadForm.addEventListener('submit', handleDownloadForm);
+    }
 
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {

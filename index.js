@@ -14,6 +14,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
+
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -121,9 +133,19 @@ app.post('/api/download-video', async (req, res) => {
         });
     } catch (error) {
         console.error('Error download:', error);
-        res.status(500).json({
+        
+        // Determine appropriate status code based on error type
+        let statusCode = 500;
+        if (error.message.includes('URL tidak boleh kosong') || 
+            error.message.includes('URL harus dari Google Drive') ||
+            error.message.includes('Format URL Google Drive tidak valid')) {
+            statusCode = 400;
+        }
+        
+        // Send error response
+        res.status(statusCode).json({
             success: false,
-            error: error.message || 'Gagal mendownload video'
+            error: error.message
         });
     }
 });
