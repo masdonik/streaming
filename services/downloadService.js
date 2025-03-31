@@ -39,20 +39,10 @@ class DownloadService {
         throw new Error('Format URL Google Drive tidak valid. Gunakan format: https://drive.google.com/file/d/YOUR_FILE_ID/view');
     }
 
-    async downloadVideo(url, filename) {
+    async downloadVideo(url) {
         try {
             const fileId = this.extractFileId(url);
             const downloadId = `download_${Date.now()}`;
-            
-            // Validasi filename
-            if (!filename) {
-                filename = `video_${Date.now()}.mp4`;
-            }
-
-            // Pastikan filename aman
-            filename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-            
-            const outputPath = path.join(this.downloadPath, filename);
             
             // Validate URL before proceeding
             if (!url.startsWith('https://')) {
@@ -71,10 +61,12 @@ class DownloadService {
                 throw new Error(`Kesalahan sistem: ${error.message}`);
             }
 
+            // Spawn gdown process tanpa -O untuk menggunakan nama file asli
             const gdownProcess = spawn('gdown', [
-                `https://drive.google.com/uc?id=${fileId}`,
-                '-O', outputPath
-            ]);
+                `https://drive.google.com/uc?id=${fileId}`
+            ], {
+                cwd: this.downloadPath // Set working directory ke folder video
+            });
 
             return new Promise((resolve, reject) => {
                 let error = '';
@@ -85,9 +77,16 @@ class DownloadService {
                     console.log(`Progress: ${progress}`);
                 });
 
+                // Konsolidasi error handling
                 gdownProcess.stderr.on('data', (data) => {
-                    error += data.toString();
-                    console.error(`Download error: ${data}`);
+                    const errorMsg = data.toString();
+                    error += errorMsg;
+                    console.error(`Download error: ${errorMsg}`);
+                    
+                    if (errorMsg.includes('Cannot retrieve the public link of the file')) {
+                        gdownProcess.kill();
+                        reject(new Error('File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'));
+                    }
                 });
 
                 gdownProcess.on('error', (err) => {
@@ -96,36 +95,35 @@ class DownloadService {
                     reject(new Error(`Kesalahan proses download: ${err.message}`));
                 });
 
-                gdownProcess.stderr.on('data', (data) => {
-                    const errorMsg = data.toString();
-                    error += errorMsg;
-                    if (errorMsg.includes('Cannot retrieve the public link of the file')) {
-                        gdownProcess.kill();
-                        reject(new Error('File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'));
-                    }
-                    console.error(`Download error: ${errorMsg}`);
-                });
-
-                gdownProcess.on('close', (code) => {
+                gdownProcess.on('close', async (code) => {
                     this.activeDownloads.delete(downloadId);
                     
-                    if (code === 0 && fs.existsSync(outputPath)) {
-                        const stats = fs.statSync(outputPath);
-                        if (stats.size > 0) {
-                            resolve({
-                                success: true,
-                                path: outputPath,
-                                message: 'Download berhasil',
-                                size: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
-                            });
-                        } else {
-                            fs.unlinkSync(outputPath); // Hapus file kosong
-                            reject(new Error('Download gagal: File hasil download kosong'));
+                    if (code === 0) {
+                        try {
+                            // Tunggu sebentar untuk memastikan file selesai ditulis
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            
+                            // Cek file yang baru saja didownload
+                            const filePath = path.join(this.downloadPath, 'Viral Faces AI.mp4');
+                            
+                            if (fs.existsSync(filePath)) {
+                                const stats = fs.statSync(filePath);
+                                if (stats.size > 0) {
+                                    resolve({
+                                        success: true,
+                                        path: filePath,
+                                        message: 'Download berhasil',
+                                        size: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
+                                    });
+                                    return;
+                                }
+                            }
+                            
+                            reject(new Error('Download gagal: File tidak ditemukan atau kosong'));
+                        } catch (err) {
+                            reject(new Error(`Gagal memproses file: ${err.message}`));
                         }
                     } else {
-                        if (fs.existsSync(outputPath)) {
-                            fs.unlinkSync(outputPath); // Hapus file yang gagal
-                        }
                         const errorMsg = error.includes('Cannot retrieve the public link') 
                             ? 'File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'
                             : error || 'Terjadi kesalahan yang tidak diketahui';
@@ -138,7 +136,6 @@ class DownloadService {
                     process: gdownProcess,
                     info: {
                         url,
-                        filename,
                         startTime: new Date(),
                         status: 'downloading'
                     }

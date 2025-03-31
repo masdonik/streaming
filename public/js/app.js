@@ -92,17 +92,14 @@ async function handleDownloadForm(event) {
         submitBtn.innerHTML = '<div class="loading"></div>';
 
         const urlInput = form.querySelector('input[name="url"]');
-        urlInput.value = urlInput.value.trim();
+        const url = urlInput.value.trim();
         
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
-
         const response = await fetch('/api/download-video', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ url })
         });
 
         const result = await response.json();

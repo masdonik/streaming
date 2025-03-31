@@ -106,7 +106,7 @@ app.post('/api/stop-stream', (req, res) => {
 
 // Video Management
 app.post('/api/download-video', async (req, res) => {
-    const { url, filename } = req.body;
+    const { url } = req.body;
     
     if (!url) {
         return res.status(400).json({ 
@@ -116,17 +116,13 @@ app.post('/api/download-video', async (req, res) => {
     }
 
     try {
-        // Generate nama file default jika tidak ada
-        const defaultFilename = filename || `video_${Date.now()}.mp4`;
-        
         // Mulai proses download
-        const result = await downloadService.downloadVideo(url, defaultFilename);
+        const result = await downloadService.downloadVideo(url);
         
         res.json({
             success: true,
             message: result.message,
             data: {
-                filename: defaultFilename,
                 path: result.path,
                 size: result.size
             }
