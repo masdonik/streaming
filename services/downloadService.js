@@ -50,107 +50,42 @@ class DownloadService {
             }
 
             // Spawn gdown process tanpa -O untuk menggunakan nama file asli
-            // Gunakan environment PATH untuk menemukan Python
-            const env = Object.assign({}, process.env, {
-                PATH: process.env.PATH + ':/usr/local/python/3.10.13/bin:/usr/local/bin:/usr/bin'
-            });
-            
-            const gdownProcess = spawn('python3', ['-m', 'gdown', 
-                `https://drive.google.com/uc?id=${fileId}`
-            ], {
-                cwd: this.downloadPath, // Set working directory ke folder video
-                env: env // Tambahkan environment PATH
-            });
+            const wgetProcess = spawn('wget', [
+                '--no-check-certificate',
+                '-O', path.join(this.downloadPath, `${fileId}.mp4`),
+                `https://drive.google.com/uc?export=download&id=${fileId}`
+            ]);
 
             return new Promise((resolve, reject) => {
                 let error = '';
-                let progress = '';
-                let downloadedFileName = '';
 
-                gdownProcess.stdout.on('data', (data) => {
+                wgetProcess.stderr.on('data', (data) => {
                     const output = data.toString();
-                    progress = output;
                     console.log(`Progress: ${output}`);
-                    
-                    // Tangkap nama file dari output gdown
-                    const saveMatch = output.match(/Downloading\s+(.+?)\s+to:/);
-                    if (saveMatch && saveMatch[1]) {
-                        downloadedFileName = saveMatch[1].trim();
-                        console.log(`Nama file terdeteksi: ${downloadedFileName}`);
-                    }
                 });
 
-                // Konsolidasi error handling
-                gdownProcess.stderr.on('data', (data) => {
-                    const errorMsg = data.toString();
-                    error += errorMsg;
-                    console.error(`Download error: ${errorMsg}`);
-                    
-                    if (errorMsg.includes('Cannot retrieve the public link of the file')) {
-                        gdownProcess.kill();
-                        reject(new Error('File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'));
-                    }
-                });
-
-                gdownProcess.on('error', (err) => {
+                wgetProcess.on('error', (err) => {
                     console.error(`Process error: ${err.message}`);
                     this.activeDownloads.delete(downloadId);
                     reject(new Error(`Kesalahan proses download: ${err.message}`));
                 });
 
-                gdownProcess.on('close', async (code) => {
+                wgetProcess.on('close', async (code) => {
                     this.activeDownloads.delete(downloadId);
                     
                     if (code === 0) {
-                        try {
-                            // Tunggu sebentar untuk memastikan file selesai ditulis
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                            
-                            // Jika nama file tidak terdeteksi, cari file terbaru di direktori
-                            if (!downloadedFileName) {
-                                const files = fs.readdirSync(this.downloadPath);
-                                if (files.length > 0) {
-                                    // Ambil file dengan waktu modifikasi terbaru
-                                    const latestFile = files
-                                        .map(file => ({
-                                            name: file,
-                                            mtime: fs.statSync(path.join(this.downloadPath, file)).mtime
-                                        }))
-                                        .sort((a, b) => b.mtime - a.mtime)[0];
-                                    
-                                    downloadedFileName = latestFile.name;
-                                }
-                            }
-
-                            if (!downloadedFileName) {
-                                throw new Error('Tidak dapat mendeteksi nama file yang didownload');
-                            }
-
-                            const filePath = path.join(this.downloadPath, downloadedFileName);
-                            
-                            if (fs.existsSync(filePath)) {
-                                const stats = fs.statSync(filePath);
-                                if (stats.size > 0) {
-                                    resolve({
-                                        success: true,
-                                        path: filePath,
-                                        filename: downloadedFileName,
-                                        message: 'Download berhasil',
-                                        size: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
-                                    });
-                                    return;
-                                }
-                            }
-                            
-                            reject(new Error('Download gagal: File tidak ditemukan atau kosong'));
-                        } catch (err) {
-                            reject(new Error(`Gagal memproses file: ${err.message}`));
-                        }
+                        const filePath = path.join(this.downloadPath, `${fileId}.mp4`);
+                        const stats = fs.statSync(filePath);
+                        
+                        resolve({
+                            success: true,
+                            path: filePath,
+                            filename: `${fileId}.mp4`,
+                            message: 'Download berhasil',
+                            size: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
+                        });
                     } else {
-                        const errorMsg = error.includes('Cannot retrieve the public link') 
-                            ? 'File tidak dapat diakses. Pastikan file telah dibagikan dengan akses "Anyone with the link"'
-                            : error || 'Terjadi kesalahan yang tidak diketahui';
-                        reject(new Error(`Download gagal: ${errorMsg}`));
+                        reject(new Error('Download gagal. Pastikan URL valid dan file dapat diakses.'));
                     }
                 });
 
