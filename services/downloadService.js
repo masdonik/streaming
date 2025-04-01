@@ -50,10 +50,16 @@ class DownloadService {
             }
 
             // Spawn gdown process tanpa -O untuk menggunakan nama file asli
-            const gdownProcess = spawn('/home/codespace/.python/current/bin/python3', ['-m', 'gdown', 
+            // Gunakan environment PATH untuk menemukan Python
+            const env = Object.assign({}, process.env, {
+                PATH: process.env.PATH + ':/usr/local/python/3.10.13/bin:/usr/local/bin:/usr/bin'
+            });
+            
+            const gdownProcess = spawn('python3', ['-m', 'gdown', 
                 `https://drive.google.com/uc?id=${fileId}`
             ], {
-                cwd: this.downloadPath // Set working directory ke folder video
+                cwd: this.downloadPath, // Set working directory ke folder video
+                env: env // Tambahkan environment PATH
             });
 
             return new Promise((resolve, reject) => {
