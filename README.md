@@ -9,6 +9,13 @@ Aplikasi untuk mengelola streaming video dan download dari Google Drive.
 - Monitoring penggunaan sistem (CPU, Memory, Disk)
 
 ## Pembaruan Terbaru
+
+### Fix Download dengan Nama File Asli (Latest Update)
+- Perbaikan sistem download agar menggunakan nama file asli dari Google Drive
+- Penghapusan pengecekan gdown yang tidak perlu
+- Perbaikan cara pemanggilan gdown menggunakan python3 -m gdown
+- Peningkatan keandalan sistem download
+
 ### Peningkatan Penanganan Error (Error Handling)
 - Validasi URL Google Drive yang lebih baik
 - Pesan error yang lebih jelas dan informatif
@@ -58,7 +65,11 @@ pip3 --version
 # Install gdown untuk download Google Drive
 pip3 install gdown
 
-# Jika gdown tidak ditemukan setelah instalasi:
+# PENTING: Gunakan cara ini untuk memastikan gdown dapat diakses:
+sudo -H pip3 install gdown
+
+# Atau jika menggunakan user non-root:
+pip3 install gdown --user
 echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc
 source ~/.bashrc
 ```
@@ -111,14 +122,23 @@ sudo ufw enable
 
 ## Troubleshooting
 
-### Error: gdown not found
+### Error: gdown not found atau ENOENT
 ```bash
-# Install gdown untuk user root
+# Solusi 1: Install gdown untuk user root (Direkomendasikan)
 sudo -H pip3 install gdown
 
-# Atau tambahkan path pip ke PATH
-echo "export PATH=$PATH:$HOME/.local/bin" >> ~/.bashrc
-source ~/.bashrc
+# Solusi 2: Install untuk user saat ini
+pip3 install gdown --user
+
+# Solusi 3: Jika masih error, pastikan Python dan pip terinstall dengan benar
+python3 --version
+pip3 --version
+
+# Solusi 4: Cek instalasi gdown
+python3 -m gdown --version
+
+# Solusi 5: Jika menggunakan PM2, restart aplikasi setelah install gdown
+pm2 restart streaming-app
 ```
 
 ### Error: Permission denied
@@ -145,8 +165,9 @@ pm2 save
 2. Masukkan URL Google Drive yang valid
    - Format yang didukung: /file/d/ID, ?id=ID, atau /d/ID
    - File harus diatur dengan akses "Anyone with the link"
-3. (Opsional) Masukkan nama file kustom
-4. Klik tombol "Download Video"
+3. Klik tombol "Download Video"
+4. File akan didownload dengan nama aslinya dari Google Drive
+5. Progress download akan ditampilkan di interface
 
 ### Manajemen Video
 - Rename: Klik ikon edit pada video yang ingin diubah namanya
