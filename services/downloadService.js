@@ -71,10 +71,19 @@ class DownloadService {
             return new Promise((resolve, reject) => {
                 let error = '';
                 let progress = '';
+                let downloadedFileName = '';
 
                 gdownProcess.stdout.on('data', (data) => {
-                    progress = data.toString();
-                    console.log(`Progress: ${progress}`);
+                    const output = data.toString();
+                    progress = output;
+                    console.log(`Progress: ${output}`);
+                    
+                    // Tangkap nama file dari output gdown
+                    const saveMatch = output.match(/Downloading\s+(.+?)\s+to:/);
+                    if (saveMatch && saveMatch[1]) {
+                        downloadedFileName = saveMatch[1].trim();
+                        console.log(`Nama file terdeteksi: ${downloadedFileName}`);
+                    }
                 });
 
                 // Konsolidasi error handling
@@ -103,8 +112,27 @@ class DownloadService {
                             // Tunggu sebentar untuk memastikan file selesai ditulis
                             await new Promise(resolve => setTimeout(resolve, 1000));
                             
-                            // Cek file yang baru saja didownload
-                            const filePath = path.join(this.downloadPath, 'Viral Faces AI.mp4');
+                            // Jika nama file tidak terdeteksi, cari file terbaru di direktori
+                            if (!downloadedFileName) {
+                                const files = fs.readdirSync(this.downloadPath);
+                                if (files.length > 0) {
+                                    // Ambil file dengan waktu modifikasi terbaru
+                                    const latestFile = files
+                                        .map(file => ({
+                                            name: file,
+                                            mtime: fs.statSync(path.join(this.downloadPath, file)).mtime
+                                        }))
+                                        .sort((a, b) => b.mtime - a.mtime)[0];
+                                    
+                                    downloadedFileName = latestFile.name;
+                                }
+                            }
+
+                            if (!downloadedFileName) {
+                                throw new Error('Tidak dapat mendeteksi nama file yang didownload');
+                            }
+
+                            const filePath = path.join(this.downloadPath, downloadedFileName);
                             
                             if (fs.existsSync(filePath)) {
                                 const stats = fs.statSync(filePath);
@@ -112,6 +140,7 @@ class DownloadService {
                                     resolve({
                                         success: true,
                                         path: filePath,
+                                        filename: downloadedFileName,
                                         message: 'Download berhasil',
                                         size: (stats.size / (1024 * 1024)).toFixed(2) + ' MB'
                                     });

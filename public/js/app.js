@@ -56,8 +56,56 @@ async function stopStream(streamId) {
     }
 }
 
-// Event listener untuk form streaming
+// Event listener untuk form streaming dan download
 document.addEventListener('DOMContentLoaded', () => {
+    // Handle download form
+    const downloadForm = document.getElementById('downloadForm');
+    if (downloadForm) {
+        downloadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const downloadButton = document.getElementById('downloadButton');
+            const downloadProgress = document.getElementById('downloadProgress');
+            const originalButtonText = downloadButton.innerHTML;
+            
+            try {
+                // Tampilkan loading state
+                downloadButton.disabled = true;
+                downloadProgress.classList.remove('hidden');
+                downloadProgress.classList.add('flex');
+                
+                const formData = new FormData(downloadForm);
+                const url = formData.get('url');
+
+                const response = await fetch('/api/download-video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url }),
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`Download berhasil!\nNama file: ${result.filename}\nUkuran: ${result.size}`);
+                    location.reload(); // Refresh halaman untuk menampilkan file baru
+                } else {
+                    throw new Error(result.error || 'Gagal mendownload video');
+                }
+            } catch (error) {
+                console.error('Error downloading video:', error);
+                alert(error.message || 'Terjadi kesalahan saat mendownload video');
+            } finally {
+                // Kembalikan tombol ke keadaan semula
+                downloadButton.disabled = false;
+                downloadProgress.classList.remove('flex');
+                downloadProgress.classList.add('hidden');
+                downloadButton.innerHTML = originalButtonText;
+            }
+        });
+    }
+
     const streamForm = document.getElementById('streamForm');
     if (streamForm) {
         streamForm.addEventListener('submit', async (e) => {
