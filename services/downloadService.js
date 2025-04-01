@@ -50,7 +50,7 @@ class DownloadService {
             }
 
             // Spawn gdown process tanpa -O untuk menggunakan nama file asli
-            const gdownProcess = spawn('python3', ['-m', 'gdown', 
+            const gdownProcess = spawn('/home/codespace/.python/current/bin/python3', ['-m', 'gdown', 
                 `https://drive.google.com/uc?id=${fileId}`
             ], {
                 cwd: this.downloadPath // Set working directory ke folder video
