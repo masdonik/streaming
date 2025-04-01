@@ -10,14 +10,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="/css/style.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
+        .form-container {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
     </style>
-    <script src="/js/app.js" defer></script>
-    <script src="/js/tabs.js" defer></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Header dengan System Stats -->
@@ -77,42 +78,50 @@
         <!-- Streaming Tab Content -->
         <div id="streaming" class="tab-content block">
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 class="text-xl font-semibold mb-4">Start New Stream</h2>
-                <form id="streamForm" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">Platform</label>
-                            <select name="platform" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2">
-                                <option value="facebook">Facebook</option>
-                                <option value="youtube">YouTube</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">Video</label>
-                            <select name="video" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2">
-                                <% videos.forEach(video => { %>
-                                    <option value="<%= video.name %>"><%= video.name %></option>
-                                <% }); %>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">Stream Key</label>
-                            <input type="text" name="streamKey" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2" 
-                                   placeholder="Masukkan stream key">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">Schedule (Optional)</label>
-                            <input type="datetime-local" name="schedule" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-2">Duration in Minutes (Optional)</label>
-                            <input type="number" name="duration" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2" 
-                                   placeholder="Kosongkan untuk loop">
+                <h2 class="text-xl font-semibold mb-6">Start New Stream</h2>
+                <form id="streamForm" class="space-y-6">
+                    <div class="form-container">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Platform</label>
+                                <select name="platform" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="facebook">Facebook</option>
+                                    <option value="youtube">YouTube</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Video</label>
+                                <select name="video" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <% videos.forEach(video => { %>
+                                        <option value="<%= video.name %>"><%= video.name %></option>
+                                    <% }); %>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Stream Key</label>
+                                <input type="text" name="streamKey" required 
+                                       class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                       placeholder="Masukkan stream key">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Schedule (Optional)</label>
+                                <input type="datetime-local" name="schedule" 
+                                       class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Duration in Minutes (Optional)</label>
+                                <input type="number" name="duration" 
+                                       class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                       placeholder="Kosongkan untuk loop">
+                            </div>
                         </div>
                     </div>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg">
-                        <i class="fas fa-play mr-2"></i>Start Streaming
-                    </button>
+                    <div class="sticky bottom-0 bg-gray-800 pt-4">
+                        <button type="submit" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg flex items-center justify-center transition-colors duration-200">
+                            <i class="fas fa-play mr-2"></i>Start Streaming
+                        </button>
+                    </div>
                 </form>
             </div>
 
@@ -139,38 +148,23 @@
 
         <!-- Download Tab Content -->
         <div id="download" class="tab-content hidden">
-            <!-- Notification Area -->
-            <div id="notificationArea" class="mb-8 hidden notification-enter">
-                <div id="successNotif" class="bg-green-600 text-white p-4 rounded-lg mb-4 hidden hover-card">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-2 text-xl"></i>
-                        <span id="successMessage" class="font-medium"></span>
-                    </div>
-                </div>
-                <div id="errorNotif" class="bg-red-600 text-white p-4 rounded-lg mb-4 hidden hover-card">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle mr-2 text-xl"></i>
-                        <span id="errorMessage" class="font-medium"></span>
-                    </div>
-                </div>
-            </div>
-
             <div class="bg-gray-800 rounded-lg p-6 mb-8">
-                <h2 class="text-xl font-semibold mb-4">Download Video dari Google Drive</h2>
-                <form id="downloadForm" class="download-form">
+                <h2 class="text-xl font-semibold mb-6">Download Video dari Google Drive</h2>
+                <form id="downloadForm" class="space-y-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-2">Google Drive URL</label>
-                        <input type="text" name="url" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2" 
-                               placeholder="Contoh: https://drive.google.com/file/d/YOUR_FILE_ID/view" required>
-                        <p class="download-help-text">Format yang didukung: /file/d/ID, ?id=ID, atau /d/ID</p>
+                        <input type="text" name="url" required 
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                               placeholder="Contoh: https://drive.google.com/file/d/YOUR_FILE_ID/view">
+                        <p class="text-sm text-gray-400 mt-2">Format yang didukung: /file/d/ID, ?id=ID, atau /d/ID</p>
                     </div>
-                    <p class="text-sm text-gray-400 mt-2">File akan didownload dengan nama asli dari Google Drive</p>
                     <div class="flex items-center space-x-4">
-                        <button type="submit" id="downloadButton" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg flex items-center">
+                        <button type="submit" id="downloadButton" 
+                                class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-8 rounded-lg flex items-center transition-colors duration-200">
                             <i class="fas fa-download mr-2"></i>Download Video
                         </button>
-                        <div id="downloadProgress" class="hidden download-progress">
-                            <div class="download-progress-spinner rounded-full h-6 w-6 border-b-2 border-green-500 mr-3"></div>
+                        <div id="downloadProgress" class="hidden items-center">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500 mr-3"></div>
                             <span>Sedang mendownload...</span>
                         </div>
                     </div>
@@ -215,159 +209,28 @@
         </div>
     </main>
 
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
     <script>
-        // Update system stats every 5 seconds
-        function updateSystemStats() {
-            fetch('/api/system-stats')
-                .then(response => response.json())
-                .then(stats => {
-                    const cpuElement = document.querySelector('[data-stat="cpu"]');
-                    const memoryElement = document.querySelector('[data-stat="memory"]');
-                    const diskElement = document.querySelector('[data-stat="disk"]');
-
-                    if (cpuElement) cpuElement.textContent = `${stats.cpuUsage}%`;
-                    if (memoryElement) memoryElement.textContent = `${stats.memoryUsage}%`;
-                    if (diskElement) diskElement.textContent = `${stats.diskUsage}%`;
-                })
-                .catch(error => {
-                    console.error('Error updating stats:', error);
-                });
-        }
-
-        // Start updating stats when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            updateSystemStats();
-            setInterval(updateSystemStats, 5000);
-        });
-
-
-
-        // Form submissions
-        document.getElementById('streamForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            try {
-                const response = await fetch('/api/start-stream', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(Object.fromEntries(formData)),
-                });
-                const result = await response.json();
-                alert(result.message);
-            } catch (error) {
-                alert('Error starting stream');
-            }
-        });
-
-        // Fungsi untuk menampilkan notifikasi
-        function showNotification(type, message) {
-            const notifArea = document.getElementById('notificationArea');
-            const successNotif = document.getElementById('successNotif');
-            const errorNotif = document.getElementById('errorNotif');
-            const successMessage = document.getElementById('successMessage');
-            const errorMessage = document.getElementById('errorMessage');
-
-            notifArea.classList.remove('hidden');
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
             
-            if (type === 'success') {
-                successNotif.classList.remove('hidden');
-                errorNotif.classList.add('hidden');
-                successMessage.textContent = message;
-            } else {
-                errorNotif.classList.remove('hidden');
-                successNotif.classList.add('hidden');
-                errorMessage.textContent = message;
-            }
-
-            // Sembunyikan notifikasi setelah 5 detik
-            setTimeout(() => {
-                notifArea.classList.add('hidden');
-                successNotif.classList.add('hidden');
-                errorNotif.classList.add('hidden');
-            }, 5000);
-        }
-
-        document.getElementById('downloadForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const downloadButton = document.getElementById('downloadButton');
-            const downloadProgress = document.getElementById('downloadProgress');
-
-            try {
-                // Tampilkan loading state
-                downloadButton.classList.add('hidden');
-                downloadProgress.classList.remove('hidden');
-                downloadProgress.classList.add('flex');
-
-                const response = await fetch('/api/download-video', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(Object.fromEntries(formData)),
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('success', `${result.message} (${result.data.size})`);
-                    // Reset form
-                    e.target.reset();
-                    // Refresh halaman setelah 1 detik untuk memperbarui daftar video
-                    setTimeout(() => location.reload(), 1000);
+            // Show selected tab content
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            // Update tab button styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.classList.add('border-blue-500', 'text-blue-500');
+                    btn.classList.remove('border-transparent', 'text-gray-400');
                 } else {
-                    showNotification('error', result.error || 'Gagal mendownload video');
+                    btn.classList.remove('border-blue-500', 'text-blue-500');
+                    btn.classList.add('border-transparent', 'text-gray-400');
                 }
-            } catch (error) {
-                showNotification('error', 'Terjadi kesalahan saat mendownload video');
-            } finally {
-                // Kembalikan tombol ke keadaan semula
-                downloadButton.classList.remove('hidden');
-                downloadProgress.classList.add('hidden');
-                downloadProgress.classList.remove('flex');
-            }
-        });
-
-        // Video management functions
-        async function renameVideo(oldName) {
-            const newName = prompt('Enter new name for video:', oldName);
-            if (newName && newName !== oldName) {
-                try {
-                    const response = await fetch('/api/rename-video', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ oldName, newName }),
-                    });
-                    const result = await response.json();
-                    alert(result.message);
-                    location.reload();
-                } catch (error) {
-                    alert('Error renaming video');
-                }
-            }
-        }
-
-        async function deleteVideo(filename) {
-            if (confirm('Are you sure you want to delete this video?')) {
-                try {
-                    const response = await fetch('/api/delete-video', {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ filename }),
-                    });
-                    const result = await response.json();
-                    alert(result.message);
-                    location.reload();
-                } catch (error) {
-                    alert('Error deleting video');
-                }
-            }
+            });
         }
     </script>
 </body>

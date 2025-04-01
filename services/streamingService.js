@@ -1,62 +1,67 @@
 const { spawn } = require('child_process');
-const schedule = require('node-schedule');
 const path = require('path');
 
 class StreamingService {
     constructor() {
         this.activeStreams = new Map();
-        this.scheduledJobs = new Map();
     }
 
-    generateStreamUrl(platform, streamKey) {
-        switch (platform.toLowerCase()) {
-            case 'facebook':
-                return `rtmps://live-api-s.facebook.com:443/rtmp/${streamKey}`;
-            case 'youtube':
-                return `rtmp://a.rtmp.youtube.com/live2/${streamKey}`;
-            default:
-                throw new Error('Platform tidak didukung');
-        }
+    generateStreamId() {
+        return Math.random().toString(36).substr(2, 9);
     }
 
     startStream(videoPath, platform, streamKey, duration = null) {
-        const streamUrl = this.generateStreamUrl(platform, streamKey);
-        const streamId = `${platform}_${Date.now()}`;
-
-        // Buat command ffmpeg untuk streaming tanpa encoding (menggunakan copy codec)
-        const ffmpegArgs = [
-            '-re',                    // Read input at native frame rate
-            '-i', videoPath,          // Input file
-            '-c', 'copy',            // Copy codec (no re-encoding)
-            '-f', 'flv',             // Force FLV format
-            streamUrl                 // Output URL
+        const streamId = this.generateStreamId();
+        
+        // Buat command ffmpeg sesuai platform
+        let ffmpegCommand = [
+            '-re',  // Read input at native frame rate
+            '-i', videoPath,  // Input file
+            '-c:v', 'copy',   // Copy video codec
+            '-c:a', 'aac',    // Audio codec
+            '-f', 'flv'       // Output format
         ];
 
-        // Spawn ffmpeg process
-        const ffmpegProcess = spawn('ffmpeg', ffmpegArgs);
-        
-        // Handle process events
-        ffmpegProcess.stderr.on('data', (data) => {
-            console.log(`[${streamId}] ffmpeg: ${data}`);
+        // Tambahkan URL streaming sesuai platform
+        let streamUrl;
+        if (platform === 'facebook') {
+            streamUrl = `rtmps://live-api-s.facebook.com:443/rtmp/${streamKey}`;
+        } else if (platform === 'youtube') {
+            streamUrl = `rtmp://a.rtmp.youtube.com/live2/${streamKey}`;
+        } else {
+            throw new Error('Platform tidak didukung');
+        }
+
+        // Jalankan ffmpeg
+        const ffmpeg = spawn('ffmpeg', [...ffmpegCommand, streamUrl]);
+
+        // Catat waktu mulai
+        const startTime = new Date();
+
+        // Simpan informasi stream
+        const streamInfo = {
+            id: streamId,
+            process: ffmpeg,
+            platform,
+            videoPath,
+            startTime,
+            duration
+        };
+
+        // Tambahkan ke daftar stream aktif
+        this.activeStreams.set(streamId, streamInfo);
+
+        // Setup event handlers
+        ffmpeg.stderr.on('data', (data) => {
+            console.log(`[Stream ${streamId}] ${data}`);
         });
 
-        ffmpegProcess.on('close', (code) => {
-            console.log(`[${streamId}] Stream ended with code ${code}`);
+        ffmpeg.on('close', (code) => {
+            console.log(`[Stream ${streamId}] Process exited with code ${code}`);
             this.activeStreams.delete(streamId);
         });
 
-        // Store stream information
-        this.activeStreams.set(streamId, {
-            process: ffmpegProcess,
-            info: {
-                platform,
-                videoPath,
-                startTime: new Date(),
-                duration
-            }
-        });
-
-        // If duration is set, schedule stream termination
+        // Jika ada durasi, setup timer untuk menghentikan stream
         if (duration) {
             setTimeout(() => {
                 this.stopStream(streamId);
@@ -66,45 +71,50 @@ class StreamingService {
         return streamId;
     }
 
-    scheduleStream(videoPath, platform, streamKey, startTime, duration = null) {
-        const jobId = `${platform}_${Date.now()}`;
-        
-        const job = schedule.scheduleJob(startTime, () => {
-            this.startStream(videoPath, platform, streamKey, duration);
-            this.scheduledJobs.delete(jobId);
-        });
+    scheduleStream(videoPath, platform, streamKey, scheduleTime, duration = null) {
+        const streamId = this.generateStreamId();
+        const now = new Date();
+        const scheduledTime = new Date(scheduleTime);
 
-        this.scheduledJobs.set(jobId, {
-            job,
-            info: {
-                platform,
-                videoPath,
-                startTime,
-                duration
-            }
-        });
+        if (scheduledTime <= now) {
+            throw new Error('Waktu jadwal harus di masa depan');
+        }
 
-        return jobId;
+        const timeoutMs = scheduledTime.getTime() - now.getTime();
+
+        // Simpan informasi jadwal
+        const scheduleInfo = {
+            id: streamId,
+            videoPath,
+            platform,
+            streamKey,
+            scheduleTime: scheduledTime,
+            duration,
+            timeout: setTimeout(() => {
+                this.startStream(videoPath, platform, streamKey, duration);
+            }, timeoutMs)
+        };
+
+        this.activeStreams.set(streamId, scheduleInfo);
+        return streamId;
     }
 
     stopStream(streamId) {
         const stream = this.activeStreams.get(streamId);
-        if (stream) {
-            stream.process.kill('SIGTERM');
-            this.activeStreams.delete(streamId);
-            return true;
+        if (!stream) {
+            return false;
         }
-        return false;
-    }
 
-    cancelScheduledStream(jobId) {
-        const scheduledStream = this.scheduledJobs.get(jobId);
-        if (scheduledStream) {
-            scheduledStream.job.cancel();
-            this.scheduledJobs.delete(jobId);
-            return true;
+        if (stream.process) {
+            // Jika stream sedang berjalan
+            stream.process.kill('SIGTERM');
+        } else if (stream.timeout) {
+            // Jika stream masih dalam jadwal
+            clearTimeout(stream.timeout);
         }
-        return false;
+
+        this.activeStreams.delete(streamId);
+        return true;
     }
 
     getActiveStreams() {
@@ -112,18 +122,10 @@ class StreamingService {
         for (const [id, stream] of this.activeStreams) {
             streams.push({
                 id,
-                ...stream.info
-            });
-        }
-        return streams;
-    }
-
-    getScheduledStreams() {
-        const streams = [];
-        for (const [id, stream] of this.scheduledJobs) {
-            streams.push({
-                id,
-                ...stream.info
+                platform: stream.platform,
+                videoPath: stream.videoPath,
+                startTime: stream.startTime || stream.scheduleTime,
+                scheduled: !stream.process
             });
         }
         return streams;
