@@ -49,18 +49,6 @@ class DownloadService {
                 throw new Error('URL harus menggunakan protokol HTTPS');
             }
 
-            // Cek apakah gdown terinstall
-            try {
-                await new Promise((resolve, reject) => {
-                    const checkGdown = spawn('gdown', ['--version']);
-                    checkGdown.on('error', () => reject(new Error('gdown tidak terinstall. Silakan install dengan: pip install gdown')));
-                    checkGdown.on('close', (code) => code === 0 ? resolve() : reject(new Error('gdown tidak terinstall')));
-                });
-            } catch (error) {
-                console.error('Gdown check error:', error);
-                throw new Error(`Kesalahan sistem: ${error.message}`);
-            }
-
             // Spawn gdown process tanpa -O untuk menggunakan nama file asli
             const gdownProcess = spawn('gdown', [
                 `https://drive.google.com/uc?id=${fileId}`
